@@ -6,6 +6,7 @@ import java.util.Optional;
 
 public interface ArticleSourceRepository {
     Optional<ArticleSource> findById(String sourceId);
+    Optional<ArticleSource> findBySlug(String slug);
     List<ArticleSource> findAll();
     void saveAll(List<ArticleSource> sources);
 }

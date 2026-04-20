@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Repository;
 
-@Repository
+//@Repository
 public class InMemoryCommentRepository implements CommentRepository {
 
     private final Map<String, Comment> commentsById = new ConcurrentHashMap<>();

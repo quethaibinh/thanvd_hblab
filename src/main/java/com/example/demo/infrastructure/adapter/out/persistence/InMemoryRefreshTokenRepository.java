@@ -7,7 +7,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Repository;
 
-@Repository
+//@Repository
 public class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
 
     private final Map<String, RefreshToken> refreshTokensByToken = new ConcurrentHashMap<>();

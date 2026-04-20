@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Repository;
 
-@Repository
+//@Repository
 public class InMemoryArticleSourceRepository implements ArticleSourceRepository {
 
     private final Map<String, ArticleSource> sourcesById = new ConcurrentHashMap<>();
@@ -16,6 +16,13 @@ public class InMemoryArticleSourceRepository implements ArticleSourceRepository 
     @Override
     public Optional<ArticleSource> findById(String sourceId) {
         return Optional.ofNullable(sourcesById.get(sourceId));
+    }
+
+    @Override
+    public Optional<ArticleSource> findBySlug(String slug) {
+        return sourcesById.values().stream()
+                .filter(source -> source.slug().equals(slug))
+                .findFirst();
     }
 
     @Override

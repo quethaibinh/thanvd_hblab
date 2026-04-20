@@ -8,4 +8,6 @@ public interface ReactionRepository {
     ArticleReaction save(ArticleReaction reaction);
     Optional<ArticleReaction> findByArticleIdAndUserId(String articleId, String userId);
     List<ArticleReaction> findByArticleId(String articleId);
+    long countByArticleIdAndType(String articleId, com.example.demo.domain.model.ReactionType type);
+    void delete(String reactionId);
 }

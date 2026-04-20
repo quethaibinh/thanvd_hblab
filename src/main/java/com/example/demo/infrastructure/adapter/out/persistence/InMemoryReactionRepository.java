@@ -8,7 +8,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Repository;
 
-@Repository
+//@Repository
 public class InMemoryReactionRepository implements ReactionRepository {
 
     private final Map<String, ArticleReaction> reactionsById = new ConcurrentHashMap<>();
@@ -23,6 +23,13 @@ public class InMemoryReactionRepository implements ReactionRepository {
     }
 
     @Override
+    public List<ArticleReaction> findByArticleId(String articleId) {
+        return reactionsById.values().stream()
+                .filter(reaction -> reaction.articleId().equals(articleId))
+                .toList();
+    }
+
+    @Override
     public Optional<ArticleReaction> findByArticleIdAndUserId(String articleId, String userId) {
         return reactionsById.values().stream()
                 .filter(reaction -> reaction.articleId().equals(articleId) && reaction.userId().equals(userId))
@@ -30,9 +37,14 @@ public class InMemoryReactionRepository implements ReactionRepository {
     }
 
     @Override
-    public List<ArticleReaction> findByArticleId(String articleId) {
+    public long countByArticleIdAndType(String articleId, com.example.demo.domain.model.ReactionType type) {
         return reactionsById.values().stream()
-                .filter(reaction -> reaction.articleId().equals(articleId))
-                .toList();
+                .filter(reaction -> reaction.articleId().equals(articleId) && reaction.type() == type)
+                .count();
+    }
+
+    @Override
+    public void delete(String reactionId) {
+        reactionsById.remove(reactionId);
     }
 }
