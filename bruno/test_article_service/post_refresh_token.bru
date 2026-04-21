@@ -1,0 +1,22 @@
+meta {
+  name: post_refresh_token
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/auth/refresh
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "refresh_token": "ew0KICAiYWxnIiA6ICJIUzI1NiIsDQogICJ0eXAiIDogIkpXVCINCn0.ew0KICAic3ViIiA6ICI1OTIwOWQ1Yy05YTA3LTRmOTYtODg4OC0xMzhkYTRkZWYyNDIiLA0KICAiZW1haWwiIDogImhpaGlAZ21haWwuY29tIiwNCiAgInJvbGUiIDogIlJFQURFUiIsDQogICJpYXQiIDogMTc3Njc1NDkwOCwNCiAgImV4cCIgOiAxNzc2NzU1ODA4DQp9.TmQInYFmdbSyxdM9Onult0Ps_7ANr0FK1GFozawR4d0"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

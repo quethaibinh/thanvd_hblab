@@ -1,0 +1,26 @@
+meta {
+  name: post_add_comment
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/articles/article-ai-agents/comments
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "content": "i like it!!"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,26 @@
+meta {
+  name: post_react_article
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/api/articles/article-ai-agents/reactions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "reactionType": "LIKE"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
