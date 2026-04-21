@@ -44,32 +44,21 @@ public class AuthController {
     }
 
     public record RegisterRequest(
-            @Email(message = "Email is invalid")
-            @NotBlank(message = "Email is required")
-            String email,
-            @NotBlank(message = "Password is required")
-            @Size(min = 6, message = "Password must contain at least 6 characters")
-            String password,
-            @NotBlank(message = "Full name is required")
-            String fullName) {
+            @Email(message = "Email is invalid") @NotBlank(message = "Email is required") String email,
+            @NotBlank(message = "Password is required") @Size(min = 6, message = "Password must contain at least 6 characters") String password,
+            @NotBlank(message = "Full name is required") String fullName) {
     }
 
     public record LoginRequest(
-            @Email(message = "Email is invalid")
-            @NotBlank(message = "Email is required")
-            String email,
-            @NotBlank(message = "Password is required")
-            String password) {
+            @Email(message = "Email is invalid") @NotBlank(message = "Email is required") String email,
+            @NotBlank(message = "Password is required") String password) {
     }
 
     public record ForgotPasswordRequest(
-            @Email(message = "Email is invalid")
-            @NotBlank(message = "Email is required")
-            String email) {
+            @Email(message = "Email is invalid") @NotBlank(message = "Email is required") String email) {
     }
 
     public record RefreshTokenRequest(
-            @NotBlank(message = "Refresh token is required")
-            String refreshToken) {
+            @NotBlank(message = "Refresh token is required") String refreshToken) {
     }
 }
