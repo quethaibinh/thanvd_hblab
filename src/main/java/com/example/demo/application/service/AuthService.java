@@ -17,6 +17,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import jakarta.transaction.Transactional;
+
+@Transactional
 public class AuthService implements AuthUseCase {
 
     private static final Duration ACCESS_TOKEN_DURATION = Duration.ofMinutes(15);

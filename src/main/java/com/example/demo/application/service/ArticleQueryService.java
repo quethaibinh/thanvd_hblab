@@ -43,6 +43,7 @@ public class ArticleQueryService implements ArticleQueryUseCase {
                         article.slug(),
                         article.title(),
                         article.summary(),
+                        article.content(),
                         article.thumbnailUrl(),
                         article.category(),
                         article.tags(),

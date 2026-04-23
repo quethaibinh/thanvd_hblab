@@ -6,6 +6,10 @@ import java.util.Optional;
 
 public interface ArticleRepository {
     List<Article> findPublishedArticles();
+
     Optional<Article> findPublishedById(String articleId);
+
     void saveAll(List<Article> articles);
+
+    Boolean existsBySourceArticleUrl(String articleURL);
 }

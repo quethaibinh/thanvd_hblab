@@ -10,5 +10,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface JpaArticleRepository extends JpaRepository<ArticleEntity, String> {
     List<ArticleEntity> findByStatus(ArticleStatus status);
+
     Optional<ArticleEntity> findByIdAndStatus(String id, ArticleStatus status);
+
+    boolean existsBySourceArticleUrl(String sourceArticleUrl);
 }

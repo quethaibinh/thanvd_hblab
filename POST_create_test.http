@@ -1,0 +1,1648 @@
+### =============================================================
+### POST /api/v1/benefits/housing-management-companies — Full Test Suite
+### Generated from: POST_create_TestCases.md (83 test cases)
+### Base URL: http://localhost:8080
+### Module: module-benefits | SCR-M-003
+###
+### Chạy tất cả + xem kết quả:
+###   IntelliJ → Click ▶▶ "Run All Requests in File"
+###   → Tab "Run" hiển thị PASS/FAIL từng TC + chi tiết lý do fail
+###
+### Mỗi assert đều có message giải thích khi fail — ví dụ:
+###   ❌ FAIL: Expected 400, got 201 — companyCd null should be rejected (H-HMC-VAL-001)
+### =============================================================
+
+### baseUrl — from http-client.env.json (public)
+### token, token_403 — from http-client.private.env.json (private, gitignored)
+### IntelliJ tự inject tất cả variables qua {{variable_name}}
+
+@basePath = /api/v1/benefits/housing-management-companies
+
+### ─────────────────────────────────────────────────────────────
+### SECTION A: HAPPY PATH (TC-001 ~ TC-007)
+### ─────────────────────────────────────────────────────────────
+
+### TC-001: Happy path — tạo mới thành công với đầy đủ fields (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{
+  "companyCd": "TA01",
+  "companyName": "株式会社テスト",
+  "contactPerson": "山田太郎",
+  "postalCode": "5004008",
+  "address": "岐阜県岐阜市",
+  "phone": "058-123-4567",
+  "fax": "058-123-4568",
+  "status": "ACTIVE"
+}
+
+> {%
+  client.test("TC-001: Happy path — full fields — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — should create with full fields");
+    client.assert(response.body.success === true, "FAIL: success must be true — got: " + response.body.success);
+    client.assert(response.body.data !== null, "FAIL: data must not be null");
+    client.assert(response.body.data.companyCd === "TA01", "FAIL: companyCd must be TA01 — got: " + response.body.data.companyCd);
+    client.assert(response.body.data.companyName === "株式会社テスト", "FAIL: companyName mismatch — got: " + response.body.data.companyName);
+    client.assert(response.body.data.contactPerson === "山田太郎", "FAIL: contactPerson mismatch — got: " + response.body.data.contactPerson);
+    client.assert(response.body.data.postalCode === "5004008", "FAIL: postalCode mismatch — got: " + response.body.data.postalCode);
+    client.assert(response.body.data.status === "ACTIVE", "FAIL: status must be ACTIVE — got: " + response.body.data.status);
+    client.assert(response.body.data.id !== null, "FAIL: id must be generated — got: " + response.body.data.id);
+    client.assert(response.body.error === null, "FAIL: error must be null on success — got: " + JSON.stringify(response.body.error));
+    client.assert(response.body.meta.requestId !== undefined, "FAIL: meta.requestId must exist");
+  });
+  client.log("TC-001 PASS: id=" + response.body.data.id + " updatedAt=" + response.body.data.updatedAt);
+%}
+
+###
+
+### TC-002: Happy path — chỉ required fields, optional = null (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA02", "companyName": "テスト会社", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-002: Required only — 201 + optional=null", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — required fields only should succeed");
+    client.assert(response.body.data.contactPerson === null, "FAIL: contactPerson must be null (not sent) — got: " + response.body.data.contactPerson);
+    client.assert(response.body.data.postalCode === null, "FAIL: postalCode must be null — got: " + response.body.data.postalCode);
+    client.assert(response.body.data.address === null, "FAIL: address must be null — got: " + response.body.data.address);
+    client.assert(response.body.data.phone === null, "FAIL: phone must be null — got: " + response.body.data.phone);
+    client.assert(response.body.data.fax === null, "FAIL: fax must be null — got: " + response.body.data.fax);
+  });
+%}
+
+###
+
+### TC-003: status=SUSPENDED — response trả SUSPENDED, DB lưu "定休" (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA03", "companyName": "テスト会社", "status": "SUSPENDED" }
+
+> {%
+  client.test("TC-003: status=SUSPENDED — 201 + correct response", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — SUSPENDED is a valid status");
+    client.assert(response.body.data.status === "SUSPENDED", "FAIL: status must be SUSPENDED — got: " + response.body.data.status);
+  });
+%}
+
+###
+
+### TC-004: status=TERMINATED — response trả TERMINATED, DB lưu "解約" (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA04", "companyName": "テスト会社", "status": "TERMINATED" }
+
+> {%
+  client.test("TC-004: status=TERMINATED — 201 + correct response", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — TERMINATED is a valid status");
+    client.assert(response.body.data.status === "TERMINATED", "FAIL: status must be TERMINATED — got: " + response.body.data.status);
+  });
+%}
+
+###
+
+### TC-005: Idempotency — replay cùng key + cùng payload → 201 from cache
+### Chạy 2 lần với CÙNG key bên dưới
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: 11111111-1111-1111-1111-111111111111
+
+{ "companyCd": "TA05", "companyName": "冪等テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-005: Idempotency same key+payload — 201 cached", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — same key+payload should return cached 201");
+    client.assert(response.body.success === true, "FAIL: success must be true");
+    client.log("TC-005: Chạy lại request này lần 2 → vẫn 201 từ cache, DB không tăng record");
+  });
+%}
+
+###
+
+### TC-006: Idempotency — cùng key + payload khác → 409 IDEMPOTENCY_CONFLICT
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: 22222222-2222-2222-2222-222222222222
+
+{ "companyCd": "TA06", "companyName": "ペイロードA", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-006 step 1: First request — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — first request must succeed");
+  });
+%}
+
+###
+
+### TC-006 step 2: Cùng key, khác payload → 409
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: 22222222-2222-2222-2222-222222222222
+
+{ "companyCd": "TB06", "companyName": "ペイロードB", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-006 step 2: Same key, different payload — 409", function() {
+    client.assert(response.status === 409, "FAIL: Expected 409, got " + response.status + " — same key with different payload must conflict");
+    client.assert(response.body.error.code === "IDEMPOTENCY_CONFLICT", "FAIL: error.code must be IDEMPOTENCY_CONFLICT — got: " + response.body.error.code);
+    client.assert(response.body.error.message === "Idempotency key already used with different payload", "FAIL: message mismatch — got: " + response.body.error.message);
+  });
+%}
+
+###
+
+### TC-007: Idempotency — key mới → xử lý bình thường (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA07", "companyName": "新しいキー", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-007: New idempotency key — 201 normal", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — new key should process normally");
+    client.assert(response.body.success === true, "FAIL: success must be true");
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION B: AUTH / SECURITY (TC-008 ~ TC-013)
+### ─────────────────────────────────────────────────────────────
+
+### TC-008: Không có Authorization header → 401
+POST {{baseUrl}}{{basePath}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA08", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-008: No auth header — 401", function() {
+    client.assert(response.status === 401, "FAIL: Expected 401, got " + response.status + " — missing Authorization must reject");
+    client.assert(response.body.error.code === "AUTHENTICATION_FAILED", "FAIL: error.code must be AUTHENTICATION_FAILED — got: " + response.body.error.code);
+  });
+%}
+
+###
+
+### TC-009: JWT hết hạn → 401
+POST {{baseUrl}}{{basePath}}
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IkNvZ25pdG9Mb2NhbCJ9.eyJleHAiOjEwMDAwMDAwMDAwfQ.expired
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA09", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-009: Expired JWT — 401", function() {
+    client.assert(response.status === 401, "FAIL: Expected 401, got " + response.status + " — expired JWT must be rejected");
+    client.assert(response.body.error.code === "AUTHENTICATION_FAILED", "FAIL: error.code must be AUTHENTICATION_FAILED — got: " + response.body.error.code);
+  });
+%}
+
+###
+
+### TC-010: JWT bị tampered → 401
+POST {{baseUrl}}{{basePath}}
+Authorization: Bearer invalid.tampered.token
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA10", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-010: Tampered JWT — 401", function() {
+    client.assert(response.status === 401, "FAIL: Expected 401, got " + response.status + " — invalid JWT must be rejected");
+    client.assert(response.body.error.code === "AUTHENTICATION_FAILED", "FAIL: error.code must be AUTHENTICATION_FAILED — got: " + response.body.error.code);
+  });
+%}
+
+###
+
+### TC-011: role=ROLE_HR_ADMIN → 201 (được phép)
+### (token hiện tại đã có hr-admin + mdm-admin → pass)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA11", "companyName": "HR_ADMINテスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-011: ROLE_HR_ADMIN — 201 allowed", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — HR_ADMIN should be allowed to create");
+  });
+%}
+
+###
+
+### TC-012: role=ROLE_EMPLOYEE → 403
+### Dùng token thật signed bởi cognito-local, chỉ có role "employee"
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token_403}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA12", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-012: ROLE_EMPLOYEE — 403 forbidden", function() {
+    client.assert(response.status === 403, "FAIL: Expected 403, got " + response.status + " — EMPLOYEE role should not be allowed to create");
+    client.assert(response.body.error.code === "FORBIDDEN", "FAIL: error.code must be FORBIDDEN — got: " + response.body.error.code);
+  });
+%}
+
+###
+
+### TC-013: JWT valid nhưng không có role claim → 403
+### Dùng token thật signed bởi cognito-local, chỉ có role "employee"
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token_403}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA13", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-013: No role claim — 403", function() {
+    client.assert(response.status === 403, "FAIL: Expected 403, got " + response.status + " — JWT without roles should be forbidden");
+    client.assert(response.body.error.code === "FORBIDDEN", "FAIL: error.code must be FORBIDDEN — got: " + response.body.error.code);
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION C: VALIDATION — companyCd (TC-014 ~ TC-024)
+### ─────────────────────────────────────────────────────────────
+
+### TC-014: companyCd = null → 400 H-HMC-VAL-001
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": null, "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-014: companyCd=null — 400 H-HMC-VAL-001", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — companyCd null must be rejected");
+    client.assert(response.body.error.code === "VALIDATION_ERROR", "FAIL: error.code must be VALIDATION_ERROR — got: " + response.body.error.code);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-001") found = true;
+    }
+    client.assert(found, "FAIL: Must have companyCd error with code H-HMC-VAL-001 — got details: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-015: companyCd = "" → 400 H-HMC-VAL-001
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-015: companyCd empty — 400 H-HMC-VAL-001", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — empty companyCd must be rejected (trimToNull → null → @NotBlank)");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-001") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-001 — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-016: companyCd = "   " (spaces only) → 400 H-HMC-VAL-001 (after trim)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "   ", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-016: companyCd spaces only — 400 H-HMC-VAL-001", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — spaces-only companyCd must be trimmed to null → H-HMC-VAL-001");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-001") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-001 after trim — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-017: companyCd = 3 chars → 400 H-HMC-VAL-002
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "DA0", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-017: companyCd 3 chars — 400 H-HMC-VAL-002", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — companyCd must be exactly 4 chars");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 for 3-char companyCd — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-018: companyCd = 5 chars → 400 H-HMC-VAL-002
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "DA012", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-018: companyCd 5 chars — 400 H-HMC-VAL-002", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — companyCd must be exactly 4 chars, not 5");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 for 5-char companyCd — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-019: companyCd chứa underscore → 400 H-HMC-VAL-002
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "DA_1", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-019: companyCd underscore — 400 H-HMC-VAL-002", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — underscore is not alphanumeric");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 for underscore — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-020: companyCd chứa hyphen → 400 H-HMC-VAL-002
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "DA-1", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-020: companyCd hyphen — 400 H-HMC-VAL-002", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — hyphen is not alphanumeric");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 for hyphen — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-021: companyCd chứa @ → 400 H-HMC-VAL-002
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "DA@1", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-021: companyCd special char @ — 400 H-HMC-VAL-002", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — @ is not alphanumeric");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 for @ symbol — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-022: companyCd lowercase 4 chars → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "da01", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-022: companyCd lowercase — 400 H-HMC-VAL-002", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — lowercase not allowed, pattern is [A-Z]{2}[0-9]{2}");
+    client.assert(response.body.error.code === "VALIDATION_ERROR", "FAIL: error.code must be VALIDATION_ERROR — got: " + response.body.error.code);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 for lowercase companyCd — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-023: companyCd all digits 4 chars → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "1234", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-023: companyCd all digits — 400 H-HMC-VAL-002", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — all digits not allowed, pattern is [A-Z]{2}[0-9]{2}");
+    client.assert(response.body.error.code === "VALIDATION_ERROR", "FAIL: error.code must be VALIDATION_ERROR — got: " + response.body.error.code);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 for all-digit companyCd — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-024: Trim — companyCd " DA01 " → "DA01" (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": " DA01 ", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-024: companyCd trim spaces — 201 + trimmed", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — trimmed ' DA01 ' should be valid 'DA01'");
+    client.assert(response.body.data.companyCd === "DA01", "FAIL: companyCd must be trimmed to 'DA01' — got: " + response.body.data.companyCd);
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION D: DUPLICATE / SOFT-DELETE (TC-025 ~ TC-026)
+### ─────────────────────────────────────────────────────────────
+
+### TC-025: companyCd đã tồn tại (active) → 409 H-HMC-VAL-003
+### Precondition: TC-001 đã tạo companyCd="TA01"
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA01", "companyName": "重複テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-025: Duplicate companyCd — 409 H-HMC-VAL-003", function() {
+    client.assert(response.status === 409, "FAIL: Expected 409, got " + response.status + " — duplicate companyCd must be rejected");
+    client.assert(response.body.error.code === "CONFLICT", "FAIL: error.code must be CONFLICT — got: " + response.body.error.code);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-003") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-003 — got: " + JSON.stringify(details));
+    client.assert(
+      response.body.error.message.includes("この管理会社コードは既に登録されています。") ||
+      (details.length > 0 && details[0].message === "この管理会社コードは既に登録されています。"),
+      "FAIL: Must contain JP message 'この管理会社コードは既に登録されています。' — got: " + JSON.stringify(response.body.error)
+    );
+  });
+%}
+
+###
+
+### TC-026 step 1: Tạo record companyCd="TA26" → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA26", "companyName": "削除対象", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-026 step 1: Create TA26 — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — create TA26 should succeed");
+    client.global.set("tc026_id", response.body.data.id);
+  });
+%}
+
+###
+
+### TC-026 step 2: Soft-delete record TA26 → 200
+DELETE {{baseUrl}}{{basePath}}/{{tc026_id}}
+Authorization: {{token}}
+
+> {%
+  client.test("TC-026 step 2: Soft-delete TA26 — 200", function() {
+    client.assert(response.status === 200, "FAIL: Expected 200, got " + response.status + " — delete should succeed");
+  });
+%}
+
+###
+
+### TC-026 step 3: Tạo lại companyCd="TA26" (soft-deleted) → 201
+### Đây mới là test chính: soft-deleted record KHÔNG chặn đăng ký mới
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "TA26", "companyName": "再登録テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-026 step 3: Re-create TA26 after soft-delete — 201 allowed", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — soft-deleted records should not block new registration");
+    client.assert(response.body.data.companyCd === "TA26", "FAIL: companyCd must be TA26 — got: " + response.body.data.companyCd);
+    client.assert(response.body.data.id !== null, "FAIL: must have new id — got: " + response.body.data.id);
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION E: VALIDATION — companyName (TC-027 ~ TC-031)
+### ─────────────────────────────────────────────────────────────
+
+### TC-027: companyName = null → 400 H-HMC-VAL-004
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "EA01", "companyName": null, "status": "ACTIVE" }
+
+> {%
+  client.test("TC-027: companyName=null — 400 H-HMC-VAL-004", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — companyName is required");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyName" && details[i].code === "H-HMC-VAL-004") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-004 — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-028: companyName = "" → 400 H-HMC-VAL-004
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "EA02", "companyName": "", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-028: companyName empty — 400 H-HMC-VAL-004", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — empty companyName must be rejected");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyName" && details[i].code === "H-HMC-VAL-004") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-004 — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-029: companyName = 30 chars (boundary max) → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "EA03", "companyName": "123456789012345678901234567890", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-029: companyName 30 chars boundary — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — 30 chars is max allowed");
+    client.assert(response.body.data.companyName === "123456789012345678901234567890", "FAIL: companyName must be 30 chars — got length: " + response.body.data.companyName.length);
+  });
+%}
+
+###
+
+### TC-030: companyName = 31 chars → 400 H-HMC-VAL-004
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "EA04", "companyName": "1234567890123456789012345678901", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-030: companyName 31 chars — 400 H-HMC-VAL-004", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — 31 chars exceeds max 30");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyName" && details[i].code === "H-HMC-VAL-004") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-004 for 31 chars — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-031: companyName = 1 char (min) → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "EA05", "companyName": "A", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-031: companyName 1 char min — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — 1 char is minimum valid");
+    client.assert(response.body.data.companyName === "A", "FAIL: companyName must be 'A' — got: " + response.body.data.companyName);
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION F: VALIDATION — contactPerson / address (VAL-008/009)
+### ─────────────────────────────────────────────────────────────
+
+### TC-038-extra: contactPerson = 10 chars (boundary max) → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "FA01", "companyName": "テスト", "contactPerson": "1234567890", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-064: contactPerson 10 chars boundary — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — 10 chars is max allowed for contactPerson");
+    client.assert(response.body.data.contactPerson === "1234567890", "FAIL: contactPerson must be 10 chars — got: " + response.body.data.contactPerson);
+  });
+%}
+
+###
+
+### TC-038-over: contactPerson = 11 chars → 400 H-HMC-VAL-008
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "FA02", "companyName": "テスト", "contactPerson": "12345678901", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-038: contactPerson 11 chars — 400 H-HMC-VAL-008", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — 11 chars exceeds max 10 for contactPerson");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "contactPerson" && details[i].code === "H-HMC-VAL-008") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-008 — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-063: contactPerson spaces only → null (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "FA03", "companyName": "テスト", "contactPerson": "  ", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-063: contactPerson spaces only — null", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — spaces-only should be trimmed to null");
+    client.assert(response.body.data.contactPerson === null, "FAIL: contactPerson must be null after trim — got: " + response.body.data.contactPerson);
+  });
+%}
+
+###
+
+### TC-066: address = 30 chars (boundary max) → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "FA04", "companyName": "テスト", "address": "123456789012345678901234567890", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-066: address 30 chars boundary — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — 30 chars is max allowed for address");
+    client.assert(response.body.data.address === "123456789012345678901234567890", "FAIL: address must be 30 chars — got length: " + response.body.data.address.length);
+  });
+%}
+
+###
+
+### TC-042-extra: address = 31 chars → 400 H-HMC-VAL-009
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "FA05", "companyName": "テスト", "address": "1234567890123456789012345678901", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-042: address 31 chars — 400 H-HMC-VAL-009", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — 31 chars exceeds max 30 for address");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "address" && details[i].code === "H-HMC-VAL-009") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-009 — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-065: address spaces only → null (201)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "FA06", "companyName": "テスト", "address": "  ", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-065: address spaces only — null", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — spaces-only should be trimmed to null");
+    client.assert(response.body.data.address === null, "FAIL: address must be null after trim — got: " + response.body.data.address);
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION G: VALIDATION — postalCode (TC-032 ~ TC-037)
+### ─────────────────────────────────────────────────────────────
+
+### TC-032: postalCode null (optional) → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "GA01", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-032: postalCode null — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — postalCode is optional");
+    client.assert(response.body.data.postalCode === null, "FAIL: postalCode must be null when not sent — got: " + response.body.data.postalCode);
+  });
+%}
+
+###
+
+### TC-033: postalCode = "" → 201 (trim to null)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "GA02", "companyName": "テスト", "postalCode": "", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-033: postalCode empty — 201 + null", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — empty postalCode should be treated as null");
+    client.assert(response.body.data.postalCode === null, "FAIL: postalCode must be null after trim — got: " + response.body.data.postalCode);
+  });
+%}
+
+###
+
+### TC-034: postalCode valid 7 digits → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "GA03", "companyName": "テスト", "postalCode": "5004008", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-034: postalCode 7 digits — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — 7 digits is valid postalCode");
+    client.assert(response.body.data.postalCode === "5004008", "FAIL: postalCode must be 5004008 — got: " + response.body.data.postalCode);
+  });
+%}
+
+###
+
+### TC-035: postalCode = 6 digits → 400 H-HMC-VAL-005
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "GA04", "companyName": "テスト", "postalCode": "500400", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-035: postalCode 6 digits — 400 H-HMC-VAL-005", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — must be exactly 7 digits");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "postalCode" && details[i].code === "H-HMC-VAL-005") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-005 — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-036: postalCode = 8 digits → 400 H-HMC-VAL-005
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "GA05", "companyName": "テスト", "postalCode": "50040081", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-036: postalCode 8 digits — 400 H-HMC-VAL-005", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — must be exactly 7 digits, not 8");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "postalCode" && details[i].code === "H-HMC-VAL-005") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-005 for 8 digits — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-037: postalCode có hyphen → 400 H-HMC-VAL-005
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "GA06", "companyName": "テスト", "postalCode": "500-4008", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-037: postalCode with hyphen — 400 H-HMC-VAL-005", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — hyphen not allowed, only [0-9]{7}");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "postalCode" && details[i].code === "H-HMC-VAL-005") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-005 for hyphen — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION H: VALIDATION — phone / fax (TC-038 ~ TC-046)
+### ─────────────────────────────────────────────────────────────
+
+### TC-038: phone null → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA01", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-038: phone null — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — phone is optional");
+    client.assert(response.body.data.phone === null, "FAIL: phone must be null — got: " + response.body.data.phone);
+  });
+%}
+
+###
+
+### TC-039: phone = "" → 201 (trim to null)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA02", "companyName": "テスト", "phone": "", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-039: phone empty — 201 + null", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — empty phone should be treated as null");
+    client.assert(response.body.data.phone === null, "FAIL: phone must be null after trim — got: " + response.body.data.phone);
+  });
+%}
+
+###
+
+### TC-040: phone = 20 chars (boundary max) → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA03", "companyName": "テスト", "phone": "058-1234567890123456", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-040: phone 20 chars boundary — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — 20 chars is max allowed");
+    client.assert(response.body.data.phone === "058-1234567890123456", "FAIL: phone must be 20 chars — got: " + response.body.data.phone);
+  });
+%}
+
+###
+
+### TC-041: phone = 21 chars → 400 H-HMC-VAL-006
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA04", "companyName": "テスト", "phone": "058-12345678901234567", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-041: phone 21 chars — 400 H-HMC-VAL-006", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — 21 chars exceeds max 20");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "phone" && details[i].code === "H-HMC-VAL-006") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-006 for phone 21 chars — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-042: phone chứa spaces → 400 H-HMC-VAL-006
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA05", "companyName": "テスト", "phone": "058 123 4567", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-042: phone with spaces — 400 H-HMC-VAL-006", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — spaces not allowed, only [0-9\\-]");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "phone" && details[i].code === "H-HMC-VAL-006") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-006 for spaces — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-043: phone chứa full-width → 400 H-HMC-VAL-006
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA06", "companyName": "テスト", "phone": "０５８－１２３", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-043: phone full-width — 400 H-HMC-VAL-006", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — full-width chars not allowed");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "phone" && details[i].code === "H-HMC-VAL-006") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-006 for full-width — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-044: fax null → 201
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA07", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-044: fax null — 201", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — fax is optional");
+    client.assert(response.body.data.fax === null, "FAIL: fax must be null — got: " + response.body.data.fax);
+  });
+%}
+
+###
+
+### TC-045: fax = 21 chars → 400 H-HMC-VAL-006
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA08", "companyName": "テスト", "fax": "058-12345678901234567", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-045: fax 21 chars — 400 H-HMC-VAL-006", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — fax 21 chars exceeds max 20");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "fax" && details[i].code === "H-HMC-VAL-006") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-006 for fax 21 chars — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-046: fax chứa space → 400 H-HMC-VAL-006
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "HA09", "companyName": "テスト", "fax": "058 987 6543", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-046: fax with space — 400 H-HMC-VAL-006", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — spaces not allowed in fax");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "fax" && details[i].code === "H-HMC-VAL-006") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-006 for fax spaces — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION I: VALIDATION — status (TC-047 ~ TC-050)
+### ─────────────────────────────────────────────────────────────
+
+### TC-047: status = null → 400 H-HMC-VAL-007
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "IA01", "companyName": "テスト", "status": null }
+
+> {%
+  client.test("TC-047: status=null — 400 H-HMC-VAL-007", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — status is required");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "status" && details[i].code === "H-HMC-VAL-007") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-007 — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-048: status = "" → 400 H-HMC-VAL-007
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "IA02", "companyName": "テスト", "status": "" }
+
+> {%
+  client.test("TC-048: status empty — 400 H-HMC-VAL-007", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — empty status must be rejected");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "status" && details[i].code === "H-HMC-VAL-007") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-007 for empty status — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-049: status = "active" (lowercase) → 400 H-HMC-VAL-007
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "IA03", "companyName": "テスト", "status": "active" }
+
+> {%
+  client.test("TC-049: status lowercase — 400 H-HMC-VAL-007", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — enum is case-sensitive, 'active' ≠ 'ACTIVE'");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "status" && details[i].code === "H-HMC-VAL-007") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-007 for lowercase — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### TC-050: status = "INVALID_VALUE" → 400 H-HMC-VAL-007
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "IA04", "companyName": "テスト", "status": "INVALID_VALUE" }
+
+> {%
+  client.test("TC-050: status invalid value — 400 H-HMC-VAL-007", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — INVALID_VALUE not in enum");
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "status" && details[i].code === "H-HMC-VAL-007") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-007 for invalid status — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION J: SERVER-GENERATED FIELDS / RESPONSE STRUCTURE (TC-054 ~ TC-062)
+### ─────────────────────────────────────────────────────────────
+
+### TC-054: Client sends `id` in body → ignored, server generates
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "id": 99999, "companyCd": "JA01", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-054: Client sends id — ignored", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — extra 'id' field should be ignored");
+    client.assert(response.body.data.id !== 99999, "FAIL: id must NOT be 99999 — server should generate its own, got: " + response.body.data.id);
+  });
+%}
+
+###
+
+### TC-055: Client sends `createdAt` → ignored, server generates
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "createdAt": "2000-01-01T00:00:00Z", "companyCd": "JA02", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-055: Client sends createdAt — ignored", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status + " — extra 'createdAt' should be ignored");
+    client.assert(response.body.data.createdAt !== "2000-01-01T00:00:00Z", "FAIL: createdAt must NOT be 2000-01-01 — server-generated, got: " + response.body.data.createdAt);
+  });
+%}
+
+###
+
+### TC-056: createdBy = userCd from JWT (EA01234 or similar)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "JA03", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-056: createdBy from JWT", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status);
+    client.assert(response.body.data.createdBy !== undefined, "FAIL: createdBy must exist — got undefined");
+    client.assert(response.body.data.createdBy !== null, "FAIL: createdBy must not be null — JWT should provide userCd");
+    client.assert(response.body.data.updatedBy === response.body.data.createdBy, "FAIL: updatedBy must equal createdBy on create");
+    client.log("TC-056: createdBy=" + response.body.data.createdBy + " updatedBy=" + response.body.data.updatedBy);
+  });
+%}
+
+###
+
+### TC-057: createdAt == updatedAt khi tạo mới
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "JA04", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-057: createdAt == updatedAt on create", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status);
+    client.assert(response.body.data.createdAt === response.body.data.updatedAt, "FAIL: createdAt must equal updatedAt on create — createdAt=" + response.body.data.createdAt + " updatedAt=" + response.body.data.updatedAt);
+  });
+%}
+
+###
+
+### TC-059: Response structure — tất cả fields hiện diện
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "JA05", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-059: Response structure — all fields present", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status);
+    var d = response.body.data;
+    var missing = [];
+    var required = ["id", "companyCd", "companyName", "contactPerson", "postalCode", "address", "phone", "fax", "status", "createdBy", "createdAt", "updatedBy", "updatedAt"];
+    for (var i = 0; i < required.length; i++) {
+      if (d[required[i]] === undefined) missing.push(required[i]);
+    }
+    client.assert(missing.length === 0, "FAIL: Missing fields: " + missing.join(", ") + " — all fields must be present");
+    client.assert(response.body.meta.requestId !== undefined, "FAIL: meta.requestId must exist");
+    client.assert(response.body.meta.timestamp !== undefined, "FAIL: meta.timestamp must exist");
+    client.assert(response.body.error === null, "FAIL: error must be null on success");
+    client.assert(response.body.success === true, "FAIL: success must be true");
+  });
+%}
+
+###
+
+### TC-060: Optional null fields trả explicit null (không omit)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "JA06", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-060: Optional fields = explicit null (not omitted)", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status);
+    var d = response.body.data;
+    var nullFields = ["contactPerson", "postalCode", "address", "phone", "fax"];
+    for (var i = 0; i < nullFields.length; i++) {
+      client.assert(d[nullFields[i]] === null, "FAIL: " + nullFields[i] + " must be explicit null, got: " + d[nullFields[i]]);
+    }
+  });
+%}
+
+###
+
+### TC-061: meta.requestId is UUID format
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "JA07", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-061: meta.requestId UUID format", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status);
+    var uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    client.assert(uuidPattern.test(response.body.meta.requestId), "FAIL: requestId must be UUID — got: " + response.body.meta.requestId);
+  });
+%}
+
+###
+
+### TC-062: error = null khi success
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "JA08", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("TC-062: error=null on success", function() {
+    client.assert(response.status === 201, "FAIL: Expected 201, got " + response.status);
+    client.assert(response.body.error === null, "FAIL: error must be explicit null on success — got: " + JSON.stringify(response.body.error));
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION K: MULTIPLE VALIDATION ERRORS (TC-067)
+### ─────────────────────────────────────────────────────────────
+
+### TC-067: Multiple validation errors → details[] chứa tất cả
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": null, "companyName": null, "status": null }
+
+> {%
+  client.test("TC-067: Multiple errors — all 3 required fields missing", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status + " — multiple invalid fields should return 400");
+    client.assert(response.body.error.code === "VALIDATION_ERROR", "FAIL: error.code must be VALIDATION_ERROR — got: " + response.body.error.code);
+    var details = response.body.error.details;
+    client.assert(details.length >= 3, "FAIL: Must have at least 3 errors, got: " + details.length + " — details: " + JSON.stringify(details));
+
+    var fields = {};
+    for (var i = 0; i < details.length; i++) {
+      fields[details[i].field] = details[i].message;
+    }
+
+    client.assert(fields["companyCd"] !== undefined, "FAIL: Must have companyCd error — present fields: " + Object.keys(fields).join(", "));
+    client.assert(fields["companyName"] !== undefined, "FAIL: Must have companyName error — present fields: " + Object.keys(fields).join(", "));
+    client.assert(fields["status"] !== undefined, "FAIL: Must have status error — present fields: " + Object.keys(fields).join(", "));
+
+    client.assert(
+      fields["companyCd"] === "管理会社コードを入力してください。",
+      "FAIL: companyCd JP message wrong — got: " + fields["companyCd"]
+    );
+    client.assert(
+      fields["companyName"] === "管理会社名を入力してください。／管理会社名は30文字以内で入力してください。",
+      "FAIL: companyName JP message wrong — got: " + fields["companyName"]
+    );
+    client.assert(
+      fields["status"] === "状態を選択してください。",
+      "FAIL: status JP message wrong — got: " + fields["status"]
+    );
+  });
+%}
+
+###
+
+
+### ─────────────────────────────────────────────────────────────
+### SECTION L: VALIDATION MESSAGE — 日本語エラーメッセージ確認
+### Verify CHÍNH XÁC message tiếng Nhật + error code trả về từ BE
+### ─────────────────────────────────────────────────────────────
+
+### MSG-01: companyCd blank → "管理会社コードを入力してください。" (H-HMC-VAL-001)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-01: companyCd blank — JP message (H-HMC-VAL-001)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-001" && details[i].message === "管理会社コードを入力してください。") found = true;
+    }
+    client.assert(found, "FAIL: Must have companyCd H-HMC-VAL-001 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-02: companyCd wrong format → "管理会社コードは4桁の半角英数字で入力してください。" (H-HMC-VAL-002)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "DA0", "companyName": "テスト", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-02: companyCd format — JP message (H-HMC-VAL-002)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyCd" && details[i].code === "H-HMC-VAL-002" && details[i].message === "管理会社コードは4桁の半角英数字で入力してください。") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-002 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-04: companyName blank → "管理会社名を入力してください。" (H-HMC-VAL-004)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "MA01", "companyName": "", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-04: companyName blank — JP message (H-HMC-VAL-004)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "companyName" && details[i].code === "H-HMC-VAL-004" && details[i].message === "管理会社名を入力してください。／管理会社名は30文字以内で入力してください。") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-004 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-06: postalCode with hyphen → "郵便番号は7桁の数字で入力してください。" (H-HMC-VAL-005)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "MA02", "companyName": "テスト", "postalCode": "123-4567", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-06: postalCode hyphen — JP message (H-HMC-VAL-005)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "postalCode" && details[i].code === "H-HMC-VAL-005" && details[i].message === "郵便番号は7桁の数字で入力してください。") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-005 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-08: phone invalid char → "電話番号／FAX番号は半角数字とハイフンで入力してください。（最大20文字）" (H-HMC-VAL-006)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "MA03", "companyName": "テスト", "phone": "090@1234", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-08: phone invalid — JP message (H-HMC-VAL-006)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "phone" && details[i].code === "H-HMC-VAL-006" && details[i].message === "電話番号／FAX番号は半角数字とハイフンで入力してください。（最大20文字）") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-006 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-10: fax invalid char → same message as phone (H-HMC-VAL-006)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "MA04", "companyName": "テスト", "fax": "03@0000", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-10: fax invalid — JP message (H-HMC-VAL-006)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "fax" && details[i].code === "H-HMC-VAL-006" && details[i].message === "電話番号／FAX番号は半角数字とハイフンで入力してください。（最大20文字）") found = true;
+    }
+    client.assert(found, "FAIL: Must have fax H-HMC-VAL-006 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-11: status blank → "状態を選択してください。" (H-HMC-VAL-007)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "MA05", "companyName": "テスト", "status": "" }
+
+> {%
+  client.test("MSG-11: status blank — JP message (H-HMC-VAL-007)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "status" && details[i].code === "H-HMC-VAL-007" && details[i].message === "状態を選択してください。") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-007 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-contactPerson: contactPerson 11 chars → "担当者は10文字以内で入力してください。" (H-HMC-VAL-008)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "MA06", "companyName": "テスト", "contactPerson": "12345678901", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-CP: contactPerson 11 chars — JP message (H-HMC-VAL-008)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "contactPerson" && details[i].code === "H-HMC-VAL-008" && details[i].message === "担当者は10文字以内で入力してください。") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-008 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###
+
+### MSG-address: address 31 chars → "住所は30文字以内で入力してください。" (H-HMC-VAL-009)
+POST {{baseUrl}}{{basePath}}
+Authorization: {{token}}
+Content-Type: application/json
+X-Idempotency-Key: {{$uuid}}
+
+{ "companyCd": "MA07", "companyName": "テスト", "address": "1234567890123456789012345678901", "status": "ACTIVE" }
+
+> {%
+  client.test("MSG-ADDR: address 31 chars — JP message (H-HMC-VAL-009)", function() {
+    client.assert(response.status === 400, "FAIL: Expected 400, got " + response.status);
+    var details = response.body.error.details;
+    var found = false;
+    for (var i = 0; i < details.length; i++) {
+      if (details[i].field === "address" && details[i].code === "H-HMC-VAL-009" && details[i].message === "住所は30文字以内で入力してください。") found = true;
+    }
+    client.assert(found, "FAIL: Must have H-HMC-VAL-009 with exact JP message — got: " + JSON.stringify(details));
+  });
+%}
+
+###

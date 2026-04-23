@@ -38,4 +38,9 @@ public class JpaArticleAdapter implements ArticleRepository {
                 .toList();
         jpaArticleRepository.saveAll(entities);
     }
+
+    @Override
+    public Boolean existsBySourceArticleUrl(String articleURL) {
+        return jpaArticleRepository.existsBySourceArticleUrl(articleURL);
+    }
 }

@@ -9,6 +9,9 @@ import com.example.demo.shared.exception.NotFoundException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
+import jakarta.transaction.Transactional;
+
+@Transactional
 public class ReactionService implements ReactionUseCase {
 
     private final ReactionRepository reactionRepository;

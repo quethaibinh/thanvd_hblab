@@ -13,6 +13,7 @@ public interface ArticleQueryUseCase {
             String slug,
             String title,
             String summary,
+            String content,
             String thumbnailUrl,
             String category,
             List<String> tags,

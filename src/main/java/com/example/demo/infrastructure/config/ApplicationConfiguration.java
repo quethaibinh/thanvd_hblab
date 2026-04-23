@@ -1,17 +1,23 @@
 package com.example.demo.infrastructure.config;
 
 import com.example.demo.application.port.out.AccessTokenProvider;
+import com.example.demo.application.port.out.ArticleContentPort;
 import com.example.demo.application.port.out.ArticleRepository;
 import com.example.demo.application.port.out.ArticleSourceRepository;
 import com.example.demo.application.port.out.CommentRepository;
+import com.example.demo.application.port.out.CrawlArticlePort;
+import com.example.demo.application.port.out.FeedDiscoveryPort;
+import com.example.demo.application.port.out.NewResourceRepository;
 import com.example.demo.application.port.out.PasswordHasher;
 import com.example.demo.application.port.out.PasswordResetRepository;
 import com.example.demo.application.port.out.ReactionRepository;
 import com.example.demo.application.port.out.RefreshTokenRepository;
+import com.example.demo.application.port.out.RssFeedPort;
 import com.example.demo.application.port.out.UserRepository;
 import com.example.demo.application.service.ArticleQueryService;
 import com.example.demo.application.service.AuthService;
 import com.example.demo.application.service.CommentService;
+import com.example.demo.application.service.CrawlService;
 import com.example.demo.application.service.ProfileService;
 import com.example.demo.application.service.ReactionService;
 import java.time.Clock;
@@ -77,5 +83,22 @@ public class ApplicationConfiguration {
             ArticleQueryService articleQueryService,
             Clock clock) {
         return new ReactionService(reactionRepository, articleRepository, articleQueryService, clock);
+    }
+
+    @Bean
+    CrawlService crawlService(
+            NewResourceRepository newResourceRepository,
+            FeedDiscoveryPort feedDiscoveryPort,
+            RssFeedPort rssFeedPort,
+            ArticleContentPort articleContentPort,
+            CrawlArticlePort crawlArticlePort,
+            Clock clock) {
+        return new CrawlService(
+                newResourceRepository,
+                feedDiscoveryPort,
+                rssFeedPort,
+                articleContentPort,
+                crawlArticlePort,
+                clock);
     }
 }

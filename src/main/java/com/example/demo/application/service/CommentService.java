@@ -11,6 +11,9 @@ import com.example.demo.shared.exception.NotFoundException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
+import jakarta.transaction.Transactional;
+
+@Transactional
 public class CommentService implements CommentUseCase {
 
     private final CommentRepository commentRepository;
