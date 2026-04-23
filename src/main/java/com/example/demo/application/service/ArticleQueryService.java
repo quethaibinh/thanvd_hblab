@@ -35,9 +35,9 @@ public class ArticleQueryService implements ArticleQueryUseCase {
     }
 
     @Override
-    public List<ArticleListItemView> listArticles() {
-        return articleRepository.findPublishedArticles().stream()
-                .sorted(Comparator.comparing(Article::publishedAt).reversed())
+    public PaginatedResult<ArticleListItemView> listArticles(int page, int size) {
+        ArticleRepository.PageResult<Article> pageResult = articleRepository.findPublishedArticles(page, size);
+        List<ArticleListItemView> content = pageResult.content().stream()
                 .map(article -> new ArticleListItemView(
                         article.id(),
                         article.slug(),
@@ -51,6 +51,16 @@ public class ArticleQueryService implements ArticleQueryUseCase {
                         article.publishedAt(),
                         toSourceView(article.sourceId())))
                 .toList();
+
+        int totalPages = (int) Math.ceil((double) pageResult.totalElements() / size);
+
+        return new PaginatedResult<>(
+                content,
+                page,
+                size,
+                pageResult.totalElements(),
+                totalPages
+        );
     }
 
     @Override

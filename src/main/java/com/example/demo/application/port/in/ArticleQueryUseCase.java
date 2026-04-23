@@ -5,8 +5,17 @@ import java.util.List;
 import java.util.Map;
 
 public interface ArticleQueryUseCase {
-    List<ArticleListItemView> listArticles();
+    PaginatedResult<ArticleListItemView> listArticles(int page, int size);
     ArticleDetailView getArticleDetail(String articleId, String currentUserId);
+
+    record PaginatedResult<T>(
+            List<T> content,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages
+    ) {
+    }
 
     record ArticleListItemView(
             String id,

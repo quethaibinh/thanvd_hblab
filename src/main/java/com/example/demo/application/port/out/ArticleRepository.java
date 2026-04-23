@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ArticleRepository {
-    List<Article> findPublishedArticles();
+    PageResult<Article> findPublishedArticles(int page, int size);
+
+    record PageResult<T>(List<T> content, long totalElements) {}
 
     Optional<Article> findPublishedById(String articleId);
 

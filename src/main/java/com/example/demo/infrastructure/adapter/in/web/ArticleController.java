@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -35,8 +36,10 @@ public class ArticleController {
     }
 
     @GetMapping
-    public List<ArticleQueryUseCase.ArticleListItemView> listArticles() {
-        return articleQueryUseCase.listArticles();
+    public ArticleQueryUseCase.PaginatedResult<ArticleQueryUseCase.ArticleListItemView> listArticles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return articleQueryUseCase.listArticles(page, size);
     }
 
     @GetMapping("/{articleId}")

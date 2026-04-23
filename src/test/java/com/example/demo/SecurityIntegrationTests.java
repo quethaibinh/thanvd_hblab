@@ -92,7 +92,7 @@ class SecurityIntegrationTests {
     void publicArticleEndpointsRemainAccessibleAndCanUseOptionalAuth() throws Exception {
         mockMvc.perform(get("/api/articles"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").exists());
+                .andExpect(jsonPath("$.content[0].id").exists());
 
         mockMvc.perform(get("/api/articles/article-ai-agents"))
                 .andExpect(status().isOk())

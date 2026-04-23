@@ -1,15 +1,17 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: demo-postgres
+  sonarqube:
+    image: sonarqube:community
+    container_name: demo-sonarqube
     ports:
-      - "${DB_PORT:-5432}:5432"
-    environment:
-      POSTGRES_DB: ${DB_NAME:-demo_db}
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      - "9000:9000"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
 
 volumes:
-  postgres_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

@@ -7,6 +7,9 @@ import com.example.demo.infrastructure.adapter.out.persistence.jpa.entity.Articl
 import com.example.demo.infrastructure.adapter.out.persistence.jpa.repository.JpaArticleRepository;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,10 +22,15 @@ public class JpaArticleAdapter implements ArticleRepository {
     }
 
     @Override
-    public List<Article> findPublishedArticles() {
-        return jpaArticleRepository.findByStatus(ArticleStatus.PUBLISHED).stream()
-                .map(ArticleEntity::toDomain)
-                .toList();
+    public PageResult<Article> findPublishedArticles(int page, int size) {
+        Page<ArticleEntity> articlePage = jpaArticleRepository.findByStatus(
+                ArticleStatus.PUBLISHED,
+                PageRequest.of(page, size, Sort.by("publishedAt").descending())
+        );
+        return new PageResult<>(
+                articlePage.getContent().stream().map(ArticleEntity::toDomain).toList(),
+                articlePage.getTotalElements()
+        );
     }
 
     @Override
