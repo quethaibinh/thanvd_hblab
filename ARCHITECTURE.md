@@ -1,10 +1,8 @@
 # Clean Architecture Guide
 
-## Current assessment
+## Current status
 
-The project started from the default Spring Boot scaffold, so it was not yet organized around Clean Architecture layers.
-
-That is not a violation by itself, but if new features are added directly under `controller`, `service`, `repository`, and `entity` packages, the codebase will quickly become framework-centric instead of business-centric.
+The project is strictly organized around **Clean Architecture** (Hexagonal Architecture) principles. It successfully separates core business logic from infrastructure concerns through a clear layering strategy and the use of ports and adapters.
 
 ## Recommended package structure
 

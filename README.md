@@ -38,9 +38,12 @@ For more details, see [ARCHITECTURE.md](ARCHITECTURE.md) and [PROJECT_OVERVIEW.m
 -   **Profile Management**:
     -   View/Update current user profile
 -   **Article System**:
-    -   List and View detailed articles
+    -   List and View detailed articles (with Server-side Pagination)
     -   Interactive Comments
     -   Multi-type Reactions (LIKE, LOVE, WOW, etc.)
+-   **Crawling & RSS Ingestion**:
+    -   Automated news crawling from RSS feeds
+    -   Dynamic news source management
 
 ## 🚦 Getting Started
 
@@ -76,6 +79,14 @@ For more details, see [ARCHITECTURE.md](ARCHITECTURE.md) and [PROJECT_OVERVIEW.m
 
 The complete list of REST endpoints and their request/response schemas can be found in:
 👉 **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)**
+## 🧪 API Testing
+
+The project includes a comprehensive integration test suite for the REST API.
+
+-   **Test File**: `http/ARTICLE_SERVICE_test.http`
+-   **Environment**: `http/http-client.env.json`
+
+You can run these tests directly from **IntelliJ IDEA** using the built-in HTTP Client or via the **JetBrains HTTP Client CLI**.
 
 ---
 

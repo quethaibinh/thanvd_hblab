@@ -134,31 +134,40 @@ Retrieves a list of available articles.
 
 - **URL:** `/api/articles`
 - **Method:** `GET`
+- **Query Parameters:**
+  - `page` (optional, default: 0)
+  - `size` (optional, default: 10)
 - **Authentication Required:** No
-- **Response (200 OK):** `Array<ArticleListItemView>`
+- **Response (200 OK):** `PaginatedResult<ArticleListItemView>`
   ```json
-  [
-    {
-      "id": "uuid",
-      "slug": "article-slug",
-      "title": "Article Title",
-      "summary": "Brief summary of the article",
-      "thumbnailUrl": "image_url",
-      "category": "Technology",
-      "tags": ["AI", "Tech"],
-      "authorName": "Author Name",
-      "publishedAt": "2026-04-20T10:00:00Z",
-      "source": {
-        "id": "source_id",
-        "name": "Source Name",
-        "slug": "source-slug",
-        "type": "RSS",
-        "homePageUrl": "...",
-        "rssUrl": "...",
-        "logoUrl": "..."
+  {
+    "content": [
+      {
+        "id": "uuid",
+        "slug": "article-slug",
+        "title": "Article Title",
+        "summary": "Brief summary of the article",
+        "thumbnailUrl": "image_url",
+        "category": "Technology",
+        "tags": ["AI", "Tech"],
+        "authorName": "Author Name",
+        "publishedAt": "2026-04-20T10:00:00Z",
+        "source": {
+          "id": "source_id",
+          "name": "Source Name",
+          "slug": "source-slug",
+          "type": "RSS",
+          "homePageUrl": "...",
+          "rssUrl": "...",
+          "logoUrl": "..."
+        }
       }
-    }
-  ]
+    ],
+    "page": 0,
+    "size": 10,
+    "totalElements": 45,
+    "totalPages": 5
+  }
   ```
 
 ### 2. Get Article Detail
