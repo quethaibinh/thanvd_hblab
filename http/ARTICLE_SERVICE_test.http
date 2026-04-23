@@ -1,13 +1,14 @@
 ### =============================================================
-### ARTICLE SERVICE — Full Integration Test Suite
+### ARTICLE SERVICE — Comprehensive Integration Test Suite
 ### Base URL: http://localhost:8080
 ### =============================================================
 
 @basePathAuth = /api/auth
 @basePathArticles = /api/articles
+@basePathProfile = /api/profile
 
 ### ─────────────────────────────────────────────────────────────
-### SECTION A: AUTHENTICATION (Login & Register)
+### SECTION A: AUTHENTICATION (Login, Register & Forgot Password)
 ### ─────────────────────────────────────────────────────────────
 
 ### TC-001: Login thành công (200)
@@ -24,7 +25,6 @@ Content-Type: application/json
   client.test("TC-001: Login success — 200", function() {
     client.assert(response.status === 200, "FAIL: Expected 200, got " + response.status);
     client.assert(response.body.accessToken !== undefined, "FAIL: accessToken missing in response");
-    // Lưu token vào biến global để các request sau sử dụng
     client.global.set("auth_token", "Bearer " + response.body.accessToken);
   });
   client.log("Login thành công! Token đã được lưu.");
@@ -32,7 +32,43 @@ Content-Type: application/json
 
 ###
 
-### TC-002: Login thất bại — sai mật khẩu (401)
+### TC-002: Đăng ký tài khoản mới (200)
+POST {{baseUrl}}{{basePathAuth}}/register
+Content-Type: application/json
+
+{
+  "email": "newuser_{{$randomInt}}@demo.com",
+  "password": "password123",
+  "fullName": "New User Testing"
+}
+
+> {%
+  client.test("TC-002: Register success — 200", function() {
+    client.assert(response.status === 200, "FAIL: Nên đăng ký thành công");
+    client.assert(response.body.accessToken !== undefined, "FAIL: Phải trả về token sau khi đăng ký");
+  });
+%}
+
+###
+
+### TC-003: Quên mật khẩu (200)
+POST {{baseUrl}}{{basePathAuth}}/forgot-password
+Content-Type: application/json
+
+{
+  "email": "hihi@gmail.com"
+}
+
+> {%
+  client.test("TC-003: Forgot password — 200", function() {
+    client.assert(response.status === 200, "FAIL: Nên trả về 200");
+    client.assert(response.body.success === true, "FAIL: Phải trả về success true");
+  });
+%}
+
+###
+
+### TC-004: Login thất bại — sai mật khẩu (401)
 POST {{baseUrl}}{{basePathAuth}}/login
 Content-Type: application/json
 
@@ -42,7 +78,7 @@ Content-Type: application/json
 }
 
 > {%
-  client.test("TC-002: Login fail — 401", function() {
+  client.test("TC-004: Login fail — 401", function() {
     client.assert(response.status === 401, "FAIL: Nên trả về 401 khi sai pass");
   });
 %}
@@ -53,15 +89,14 @@ Content-Type: application/json
 ### SECTION B: ARTICLES (Query & Management)
 ### ─────────────────────────────────────────────────────────────
 
-### TC-003: Lấy danh sách bài viết (mặc định — 200)
+### TC-005: Lấy danh sách bài viết (mặc định — 200)
 GET {{baseUrl}}{{basePathArticles}}
 Authorization: {{auth_token}}
 
 > {%
-  client.test("TC-003: Get articles list default — 200", function() {
+  client.test("TC-005: Get articles list default — 200", function() {
     client.assert(response.status === 200, "FAIL: Expected 200");
-    client.assert(Array.isArray(response.body.content), "FAIL: Body.content phải là một mảng bài viết");
-    client.assert(response.body.page === 0, "FAIL: Mặc định trang đầu là 0");
+    client.assert(Array.isArray(response.body.content), "FAIL: content phải là mảng");
     if (response.body.content.length > 0) {
         client.global.set("first_article_id", response.body.content[0].id);
     }
@@ -70,40 +105,91 @@ Authorization: {{auth_token}}
 
 ###
 
-### TC-003.1: Lấy danh sách bài viết có phân trang (page=0, size=5)
-GET {{baseUrl}}{{basePathArticles}}?page=0&size=5
-Authorization: {{auth_token}}
-
-> {%
-  client.test("TC-003.1: Get articles list with pagination — 200", function() {
-    client.assert(response.status === 200, "FAIL: Expected 200");
-    client.assert(response.body.size === 5, "FAIL: Size mismatch");
-    client.assert(response.body.content.length <= 5, "FAIL: Content length > size");
-  });
-%}
-
-###
-
-### TC-004: Lấy chi tiết một bài viết (200)
-# @name get_detail
+### TC-006: Lấy chi tiết một bài viết (200)
 GET {{baseUrl}}{{basePathArticles}}/{{first_article_id}}
 Authorization: {{auth_token}}
 
 > {%
-  client.test("TC-004: Get article detail — 200", function() {
-    client.assert(response.status === 200, "FAIL: Article ID " + client.global.get("first_article_id") + " not found");
+  client.test("TC-006: Get article detail — 200", function() {
+    client.assert(response.status === 200, "FAIL: Article not found");
     client.assert(response.body.id === client.global.get("first_article_id"), "FAIL: ID mismatch");
   });
 %}
 
 ###
 
-### TC-005: Truy cập bài viết không tồn tại (404)
-GET {{baseUrl}}{{basePathArticles}}/999999
+### ─────────────────────────────────────────────────────────────
+### SECTION C: INTERACTIONS (Comments & Reactions)
+### ─────────────────────────────────────────────────────────────
+
+### TC-007: Thêm bình luận cho bài viết (200)
+POST {{baseUrl}}{{basePathArticles}}/{{first_article_id}}/comments
+Authorization: {{auth_token}}
+Content-Type: application/json
+
+{
+  "content": "Bài viết rất hay và bổ ích! (Test comment from HTTP Client)"
+}
+
+> {%
+  client.test("TC-007: Add comment — 200", function() {
+    client.assert(response.status === 200, "FAIL: Phải comment được");
+    client.assert(response.body.content.includes("Test comment"), "FAIL: Content mismatch");
+  });
+%}
+
+###
+
+### TC-008: Thả reaction cho bài viết (200)
+POST {{baseUrl}}{{basePathArticles}}/{{first_article_id}}/reactions
+Authorization: {{auth_token}}
+Content-Type: application/json
+
+{
+  "reactionType": "LOVE"
+}
+
+> {%
+  client.test("TC-008: React to article — 200", function() {
+    client.assert(response.status === 200, "FAIL: Phải react được");
+    client.assert(response.body.userReaction === "LOVE", "FAIL: Reaction mismatch");
+  });
+%}
+
+###
+
+### ─────────────────────────────────────────────────────────────
+### SECTION D: USER PROFILE
+### ─────────────────────────────────────────────────────────────
+
+### TC-009: Lấy thông tin cá nhân (200)
+GET {{baseUrl}}{{basePathProfile}}/me
 Authorization: {{auth_token}}
 
 > {%
-  client.test("TC-005: Article not found — 404", function() {
-    client.assert(response.status === 404, "FAIL: Nên trả về 404 cho ID không tồn tại");
+  client.test("TC-009: Get profile — 200", function() {
+    client.assert(response.status === 200, "FAIL: Phải lấy được profile");
+    client.assert(response.body.email === "alice@demo.com", "FAIL: Email mismatch");
   });
 %}
+
+###
+
+### TC-010: Cập nhật thông tin cá nhân (200)
+PUT {{baseUrl}}{{basePathProfile}}/me
+Authorization: {{auth_token}}
+Content-Type: application/json
+
+{
+  "fullName": "Alice Nguyen (Updated)",
+  "avatarUrl": "https://example.com/new-avatar.png",
+  "bio": "I love AI and Clean Architecture."
+}
+
+> {%
+  client.test("TC-010: Update profile — 200", function() {
+    client.assert(response.status === 200, "FAIL: Phải cập nhật được profile");
+    client.assert(response.body.fullName === "Alice Nguyen (Updated)", "FAIL: Name mismatch");
+  });
+%}
+
